@@ -37,7 +37,7 @@ func (s *Solver) Load(src [9][9]uint) {
                 case 1 <= v && v <= 9:
                     // do nothing
                 default:
-                    // TODO: trhow an exception: wrong src matrix format
+                    // TODO: throw an exception: wrong src matrix format
             }
             s.matrix[i][j].value, s.matrix[i][j].final = v, f
         }
