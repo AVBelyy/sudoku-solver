@@ -2,8 +2,5 @@
 
 export GOPATH=`pwd`
 
-# build modules
-go build sudoku
-
 # build app
 go build

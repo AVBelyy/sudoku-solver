@@ -1,4 +1,4 @@
-package sudoku
+package solver
 
 type m_item struct {
     value uint
@@ -87,7 +87,7 @@ func (s *Solver) Solve() {
                 if count(v) == 1 {
                     v, f = fastlog2(v), true
                 }
-                s.matrix[i][j].value, s.matrix[i][j].final = v, f
+                s.matrix[i][j] = m_item{v, f}
             }
         }
         if !delta {
