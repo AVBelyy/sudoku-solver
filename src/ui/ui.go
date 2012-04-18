@@ -5,6 +5,7 @@ import (
     "unsafe"
     "solver"
     "unicode"
+    "strconv"
     "github.com/mattn/go-gtk/gtk"
     "github.com/mattn/go-gtk/gdk"
     "github.com/mattn/go-gtk/glib"
@@ -26,6 +27,9 @@ func Init() {
     window.Connect("destroy", func() {
         gtk.MainQuit()
     })
+
+    vbox := gtk.VBox(false, 10)
+
     table := gtk.Table(3, 3, false)
     for y := uint(0); y < 3; y++ {
         for x := uint(0); x < 3; x++ {
@@ -62,8 +66,38 @@ func Init() {
         table.Attach(subtable, x, x+1, y, y+1, gtk.GTK_FILL, gtk.GTK_FILL, 3, 3)
         }
     }
-    window.Add(table)
 
+    solve_btn := gtk.ButtonWithLabel("Solve")
+    solve_btn.Clicked(func() {
+        var matrix [9][9]uint
+
+        for i := 0; i < 9; i++ {
+            for j := 0; j < 9; j++ {
+                v, _ := strconv.Atoi(entries[i][j].GetText())
+                matrix[i][j] = uint(v)
+            }
+        }
+        s.Load(matrix)
+        s.Solve()
+        for i := uint(0); i < 9; i++ {
+            for j := uint(0); j < 9; j++ {
+                v := int(s.Get(i, j))
+                if v != 0 {
+                    entries[i][j].SetText(strconv.Itoa(v))
+                }
+            }
+        }
+    })
+    clear_btn := gtk.ButtonWithLabel("Cancel")
+
+    buttons := gtk.HBox(true, 5)
+    buttons.Add(solve_btn)
+    buttons.Add(clear_btn)
+
+    vbox.Add(table)
+    vbox.Add(buttons)
+
+    window.Add(vbox)
     window.ShowAll()
 }
 
