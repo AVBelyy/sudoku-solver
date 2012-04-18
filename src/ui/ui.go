@@ -36,12 +36,12 @@ func Init() {
                     w.SetWidthChars(1)
                     w.SetMaxLength(1)
                     w.Connect("key-press-event", func(ctx *glib.CallbackContext) bool {
-                        // TODO: fix tab-switch bugs
                         data := ctx.Data().([]uint)
                         y, x := data[0], (data[1]+1)%9
                         arg := ctx.Args(0)
                         kev := *(**gdk.EventKey)(unsafe.Pointer(&arg))
-                        if unicode.IsLetter(rune(kev.Keyval)) {
+                        r := rune(kev.Keyval)
+                        if unicode.IsLetter(r) {
                             return true
                         }
                         if x == 0 {
@@ -50,8 +50,10 @@ func Init() {
                         if y == 9 {
                             return false
                         }
-                        entries[y][x].GrabFocus()
-                        return false
+                        if unicode.IsNumber(r) || r&0xFF == 9 {
+                            entries[y][x].GrabFocus()
+                        }
+                        return r&0xFF == 9
                     }, []uint{3*y+sy, 3*x+sx})
                     subtable.Attach(w, sx, sx+1, sy, sy+1, gtk.GTK_FILL, gtk.GTK_FILL, 0, 0)
                     entries[3*y+sy][3*x+sx] = w
