@@ -17,12 +17,47 @@ var (
     entries [9][9]*gtk.GtkEntry
 )
 
+func load_sudoku(path string) bool {
+    buf := make([]byte, 1024)
+    f, err := os.Open(path)
+    if err != nil {
+        return false
+    }
+    defer f.Close()
+
+    clear()
+    x := 0
+    for {
+        n, _ := f.Read(buf)
+        if n == 0 || x == 81 { break }
+        for i := 0; i < n; i++ {
+            if buf[i] >= 49 && buf[i] <= 57 {
+                entries[x/9][x%9].SetText(strconv.Itoa(int(buf[i]-48)))
+                x++
+            } else if buf[i] == 32 {
+                entries[x/9][x%9].SetText("")
+                x++
+            }
+        }
+    }
+    return true
+}
+
+func clear() {
+    for i := 0; i < 9; i++ {
+        for j := 0; j < 9; j++ {
+            entries[i][j].SetText("")
+        }
+    }
+}
+
 func Init() {
     s = new(solver.Solver)
 
     gtk.Init(&os.Args)
 
     window := gtk.Window(gtk.GTK_WINDOW_TOPLEVEL)
+    window.SetResizable(false)
     window.SetTitle("Sudoku solver")
     window.Connect("destroy", func() {
         gtk.MainQuit()
@@ -88,13 +123,31 @@ func Init() {
             }
         }
     })
-    clear_btn := gtk.ButtonWithLabel("Cancel")
+    clear_btn := gtk.ButtonWithLabel("Clear")
+    clear_btn.Clicked(clear)
+
+    examples := gtk.ComboBoxNewText()
+    // scan `examples` folder
+    dir, err := os.Open("examples")
+    if err == nil {
+        names, err := dir.Readdirnames(0)
+        if err == nil {
+            for _, v := range names {
+                examples.AppendText(v)
+            }
+        }
+    }
+    dir.Close()
+    examples.Connect("changed", func() {
+        load_sudoku("examples/"+examples.GetActiveText())
+    })
 
     buttons := gtk.HBox(true, 5)
     buttons.Add(solve_btn)
     buttons.Add(clear_btn)
 
     vbox.Add(table)
+    vbox.Add(examples)
     vbox.Add(buttons)
 
     window.Add(vbox)
