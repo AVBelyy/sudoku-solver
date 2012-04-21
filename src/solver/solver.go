@@ -82,6 +82,34 @@ func (s *Solver) Solve() {
                         }
                     }
                 }
+                // check for hidden singles in row
+                for x := uint(0); x < 9; x++ {
+                    if v&(1<<x) == 0 { continue }
+                    for k := 0; k < 9; k++ {
+                        if !s.matrix[i][k].final && k != j {
+                            if s.matrix[i][k].value&(1<<x) != 0 {
+                                goto hidden_singles_row_next
+                            }
+                        }
+                    }
+                    v, f, delta = x+1, true, true
+                    goto final
+                    hidden_singles_row_next:
+                }
+                // check for hidden singles in column
+                for x := uint(0); x < 9; x++ {
+                    if v&(1<<x) == 0 { continue }
+                    for k := 0; k < 9; k++ {
+                        if !s.matrix[k][j].final && k != i {
+                            if s.matrix[k][j].value&(1<<x) != 0 {
+                                goto hidden_singles_column_next
+                            }
+                        }
+                    }
+                    v, f, delta = x+1, true, true
+                    goto final
+                    hidden_singles_column_next:
+                }
                 // check for hidden singles in box
                 for x := uint(0); x < 9; x++ {
                     if v&(1<<x) == 0 { continue }
@@ -89,14 +117,14 @@ func (s *Solver) Solve() {
                         for k2 := b_x; k2 < b_x+3; k2++ {
                             if !s.matrix[k1][k2].final && (k1 != i || k2 != j) {
                                 if s.matrix[k1][k2].value&(1<<x) != 0 {
-                                    goto hidden_singles_next
+                                    goto hidden_singles_box_next
                                 }
                             }
                         }
                     }
                     v, f, delta = x+1, true, true
                     goto final
-                    hidden_singles_next:
+                    hidden_singles_box_next:
                 }
                 if v != v_s {
                     delta = true
