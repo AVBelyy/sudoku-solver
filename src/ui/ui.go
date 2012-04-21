@@ -142,12 +142,50 @@ func Init() {
         load_sudoku("examples/"+examples.GetActiveText())
     })
 
+    icon := gtk.Image()
+    icon.SetFromStock(gtk.GTK_STOCK_SAVE_AS, gtk.GTK_ICON_SIZE_BUTTON)
+    export := gtk.Button()
+    export.SetImage(icon)
+    export.Clicked(func() {
+        dialog := gtk.FileChooserDialog("Save sudoku", window, gtk.GTK_FILE_CHOOSER_ACTION_SAVE, gtk.GTK_STOCK_SAVE, 0)
+        dialog.Response(func() {
+            if filename := dialog.GetFilename(); filename != "" {
+                f, err := os.Create(filename)
+                if err == nil {
+                    for i := 0; i < 9; i++ {
+                        for j := 0; j < 9; j++ {
+                            v := []byte(entries[i][j].GetText())
+                            if len(v) == 0 || v[0] < 49 || v[0] > 57 {
+                                v = []byte{' '}
+                            }
+                            f.Write(v)
+                            if j == 2 || j == 5 {
+                                f.WriteString("*")
+                            }
+                        }
+                        f.WriteString("\n")
+                        if i == 2 || i == 5 {
+                            f.WriteString("***********\n")
+                        }
+                    }
+                    f.Close()
+                }
+            }
+            dialog.Destroy()
+        })
+        dialog.Run()
+    })
+
+    files := gtk.HBox(false, 0)
+    files.Add(export)
+    files.Add(examples)
+
     buttons := gtk.HBox(true, 5)
     buttons.Add(solve_btn)
     buttons.Add(clear_btn)
 
     vbox.Add(table)
-    vbox.Add(examples)
+    vbox.Add(files)
     vbox.Add(buttons)
 
     window.Add(vbox)
