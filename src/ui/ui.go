@@ -52,6 +52,12 @@ func clear() {
 }
 
 func Init() {
+    var (
+        files *gtk.GtkHBox
+        examples_cnt int
+        newfile_flag bool
+    )
+
     s = new(solver.Solver)
 
     gtk.Init(&os.Args)
@@ -134,6 +140,7 @@ func Init() {
         if err == nil {
             for _, v := range names {
                 examples.AppendText(v)
+                examples_cnt++
             }
         }
     }
@@ -142,41 +149,55 @@ func Init() {
         load_sudoku("examples/"+examples.GetActiveText())
     })
 
+    newfile := gtk.Entry()
+    newfile.Connect("activate", func() {
+        filename := newfile.GetText()
+        if filename != "" {
+            f, err := os.Create("examples/"+filename)
+            if err == nil {
+                for i := 0; i < 9; i++ {
+                    for j := 0; j < 9; j++ {
+                        v := []byte(entries[i][j].GetText())
+                        if len(v) == 0 || v[0] < 49 || v[0] > 57 {
+                            v = []byte{' '}
+                        }
+                        f.Write(v)
+                        if j == 2 || j == 5 {
+                            f.WriteString("*")
+                        }
+                    }
+                    f.WriteString("\n")
+                    if i == 2 || i == 5 {
+                        f.WriteString("***********\n")
+                    }
+                }
+                f.Close()
+            }
+            examples.AppendText(filename)
+            examples.SetActive(examples_cnt)
+            examples_cnt++
+        }
+        files.ShowAll()
+        newfile.SetText("")
+        newfile.Hide()
+    })
+
     icon := gtk.Image()
     icon.SetFromStock(gtk.GTK_STOCK_SAVE_AS, gtk.GTK_ICON_SIZE_BUTTON)
     export := gtk.Button()
     export.SetImage(icon)
     export.Clicked(func() {
-        dialog := gtk.FileChooserDialog("Save sudoku", window, gtk.GTK_FILE_CHOOSER_ACTION_SAVE, gtk.GTK_STOCK_SAVE, 0)
-        dialog.Response(func() {
-            if filename := dialog.GetFilename(); filename != "" {
-                f, err := os.Create(filename)
-                if err == nil {
-                    for i := 0; i < 9; i++ {
-                        for j := 0; j < 9; j++ {
-                            v := []byte(entries[i][j].GetText())
-                            if len(v) == 0 || v[0] < 49 || v[0] > 57 {
-                                v = []byte{' '}
-                            }
-                            f.Write(v)
-                            if j == 2 || j == 5 {
-                                f.WriteString("*")
-                            }
-                        }
-                        f.WriteString("\n")
-                        if i == 2 || i == 5 {
-                            f.WriteString("***********\n")
-                        }
-                    }
-                    f.Close()
-                }
-            }
-            dialog.Destroy()
-        })
-        dialog.Run()
+        if !newfile_flag {
+            files.Add(newfile)
+            newfile_flag = true
+        }
+        files.ShowAll()
+        examples.Hide()
+        export.Hide()
+        newfile.GrabFocus()
     })
 
-    files := gtk.HBox(false, 0)
+    files = gtk.HBox(false, 0)
     files.Add(export)
     files.Add(examples)
 
