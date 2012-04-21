@@ -56,6 +56,7 @@ func (s *Solver) Solve() {
         delta := false
         for i := 0; i < 9; i++ {
             for j := 0; j < 9; j++ {
+                b_y, b_x := i/3*3, j/3*3
                 v, f := s.matrix[i][j].value, s.matrix[i][j].final
                 if f {
                     continue
@@ -74,12 +75,28 @@ func (s *Solver) Solve() {
                     }
                 }
                 // check cell's box
-                for k1 := i/3*3; k1 < i/3*3+3; k1++ {
-                    for k2 := j/3*3; k2 < j/3*3+3; k2++ {
+                for k1 := b_y; k1 < b_y+3; k1++ {
+                    for k2 := b_x; k2 < b_x+3; k2++ {
                         if s.matrix[k1][k2].final {
                             v &= ^(1<<(s.matrix[k1][k2].value-1))
                         }
                     }
+                }
+                // check for hidden singles in box
+                for x := uint(0); x < 9; x++ {
+                    if v&(1<<x) == 0 { continue }
+                    for k1 := b_y; k1 < b_y+3; k1++ {
+                        for k2 := b_x; k2 < b_x+3; k2++ {
+                            if !s.matrix[k1][k2].final && (k1 != i || k2 != j) {
+                                if s.matrix[k1][k2].value&(1<<x) != 0 {
+                                    goto hidden_singles_next
+                                }
+                            }
+                        }
+                    }
+                    v, f, delta = x+1, true, true
+                    goto final
+                    hidden_singles_next:
                 }
                 if v != v_s {
                     delta = true
@@ -87,6 +104,7 @@ func (s *Solver) Solve() {
                 if count(v) == 1 {
                     v, f = fastlog2(v), true
                 }
+                final:
                 s.matrix[i][j] = m_item{v, f}
             }
         }
