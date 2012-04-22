@@ -1,5 +1,11 @@
 package ui
 
+
+/*
+#include <gtk/gtk.h>
+*/
+// #cgo pkg-config: gtk+-2.0
+import "C"
 import (
     "os"
     "unsafe"
@@ -15,6 +21,7 @@ var (
     Term chan bool
     s *solver.Solver
     entries [9][9]*gtk.GtkEntry
+    examples *gtk.GtkComboBox
 )
 
 func load_sudoku(path string) bool {
@@ -49,6 +56,50 @@ func clear() {
             entries[i][j].SetText("")
         }
     }
+    entries[0][0].GrabFocus()
+}
+
+
+func check_field_error(f bool, y1 int, x1 int, y2 int, x2 int) bool {
+    if f { entries[y1][x1].GrabFocus() }
+    modify_base(unsafe.Pointer(entries[y2][x2].Widget), gdk.Color("red"))
+    return false
+}
+
+func check_field(m *[9][9]uint) bool {
+    for i := 0; i < 9; i++ {
+        for j := 0; j < 9; j++ {
+            if m[i][j] == 0 { continue }
+            flag := true
+            // check row
+            for k2 := 0; k2 < 9; k2++ {
+                if k2 != j && m[i][k2] == m[i][j] {
+                    flag = check_field_error(flag, i, j, i, k2)
+                }
+            }
+            // check column
+            for k1 := 0; k1 < 9; k1++ {
+                if k1 != i && m[k1][j] == m[i][j] {
+                    flag = check_field_error(flag, i, j, k1, j)
+                }
+            }
+            // check box
+            for k1 := i/3*3; k1 < i/3*3+3; k1++ {
+                for k2 := j/3*3; k2 < j/3*3+3; k2++ {
+                    if (k1 != i || k2 != j) && m[k1][k2] == m[i][j] {
+                        flag = check_field_error(flag, i, j, k1, k2)
+                    }
+                }
+            }
+            if !flag { return false }
+        }
+    }
+    return true
+}
+
+// stub
+func modify_base(v unsafe.Pointer, color *gdk.GdkColor) {
+    C.gtk_widget_modify_base((*_Ctype_GtkWidget)(v), C.GtkStateType(gtk.GTK_STATE_NORMAL), (*C.GdkColor)(unsafe.Pointer(&color.Color)))
 }
 
 func Init() {
@@ -110,11 +161,30 @@ func Init() {
                             case 84:
                                 if y != 8 { y++ }
                         }
-                        entries[y][x].GrabFocus()
+                        if y != data[0] || x != data[1] {
+                            entries[y][x].GrabFocus()
+                        }
                         if unicode.IsOneOf([]*unicode.RangeTable{unicode.L, unicode.Z}, r) {
                             return true
                         }
                         return false
+                    }, []uint{3*y+sy, 3*x+sx})
+                    w.Connect("grab-focus", func(ctx *glib.CallbackContext) {
+                        data := ctx.Data().([]uint)
+                        y, x := data[0], data[1]
+                        bg_1, bg_2 := gdk.Color("white"), gdk.Color("#e9f2ea")
+                        for i := 0; i < 9; i++ {
+                            for j := 0; j < 9; j++ {
+                                modify_base(unsafe.Pointer(entries[i][j].Widget), bg_1)
+                            }
+                        }
+                        for i := 0; i < 9; i++ {
+                            modify_base(unsafe.Pointer(entries[i][x].Widget), bg_2)
+                        }
+                        for j := 0; j < 9; j++ {
+                            modify_base(unsafe.Pointer(entries[y][j].Widget), bg_2)
+                        }
+                        y, x = x, y
                     }, []uint{3*y+sy, 3*x+sx})
                     subtable.Attach(w, sx, sx+1, sy, sy+1, gtk.GTK_FILL, gtk.GTK_FILL, 0, 0)
                     entries[3*y+sy][3*x+sx] = w
@@ -134,6 +204,7 @@ func Init() {
                 matrix[i][j] = uint(v)
             }
         }
+        if !check_field(&matrix) { return }
         s.Load(matrix)
         s.Solve()
         for i := uint(0); i < 9; i++ {
@@ -146,9 +217,12 @@ func Init() {
         }
     })
     clear_btn := gtk.ButtonWithLabel("Clear")
-    clear_btn.Clicked(clear)
+    clear_btn.Clicked(func() {
+        clear()
+        examples.SetActive(-1)
+    })
 
-    examples := gtk.ComboBoxNewText()
+    examples = gtk.ComboBoxNewText()
     // scan `examples` folder
     dir, err := os.Open("examples")
     if err == nil {
