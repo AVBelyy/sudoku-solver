@@ -82,23 +82,39 @@ func Init() {
                     w.SetMaxLength(1)
                     w.Connect("key-press-event", func(ctx *glib.CallbackContext) bool {
                         data := ctx.Data().([]uint)
-                        y, x := data[0], (data[1]+1)%9
+                        y, x := data[0], data[1]
                         arg := ctx.Args(0)
                         kev := *(**gdk.EventKey)(unsafe.Pointer(&arg))
                         r := rune(kev.Keyval)
-                        if unicode.IsLetter(r) {
+                        switch r&0xFF {
+                            case 81:
+                                if x != 0 || y != 0 {
+                                    if x == 0 {
+                                        x = 8
+                                        y--
+                                    } else {
+                                        x--
+                                    }
+                                }
+                            case 82:
+                                if y != 0 { y-- }
+                            case 83:
+                                if x != 8 || y != 8 {
+                                    if x == 8 {
+                                        x = 0
+                                        y++
+                                    } else {
+                                        x++
+                                    }
+                                }
+                            case 84:
+                                if y != 8 { y++ }
+                        }
+                        entries[y][x].GrabFocus()
+                        if unicode.IsOneOf([]*unicode.RangeTable{unicode.L, unicode.Z}, r) {
                             return true
                         }
-                        if x == 0 {
-                            y++
-                        }
-                        if y == 9 {
-                            return false
-                        }
-                        if unicode.IsNumber(r) || r&0xFF == 9 {
-                            entries[y][x].GrabFocus()
-                        }
-                        return r&0xFF == 9
+                        return false
                     }, []uint{3*y+sy, 3*x+sx})
                     subtable.Attach(w, sx, sx+1, sy, sy+1, gtk.GTK_FILL, gtk.GTK_FILL, 0, 0)
                     entries[3*y+sy][3*x+sx] = w
