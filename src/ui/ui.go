@@ -40,6 +40,7 @@ func load_sudoku(path string) bool {
         for i := 0; i < n; i++ {
             if buf[i] >= 49 && buf[i] <= 57 {
                 entries[x/9][x%9].SetText(strconv.Itoa(int(buf[i]-48)))
+                entries[x/9][x%9].ModifyFontEasy("Sans Bold 9")
                 x++
             } else if buf[i] == 32 {
                 entries[x/9][x%9].SetText("")
@@ -54,6 +55,7 @@ func clear() {
     for i := 0; i < 9; i++ {
         for j := 0; j < 9; j++ {
             entries[i][j].SetText("")
+            entries[i][j].ModifyFontEasy("Sans Bold 9")
         }
     }
     entries[0][0].GrabFocus()
@@ -131,6 +133,7 @@ func Init() {
                     w := gtk.Entry()
                     w.SetWidthChars(1)
                     w.SetMaxLength(1)
+                    w.ModifyFontEasy("Sans Bold 9")
                     w.Connect("key-press-event", func(ctx *glib.CallbackContext) bool {
                         data := ctx.Data().([]uint)
                         y, x := data[0], data[1]
@@ -196,22 +199,33 @@ func Init() {
 
     solve_btn := gtk.ButtonWithLabel("Solve")
     solve_btn.Clicked(func() {
-        var matrix [9][9]uint
+        var m1, m2 [9][9]uint
 
         for i := 0; i < 9; i++ {
             for j := 0; j < 9; j++ {
                 v, _ := strconv.Atoi(entries[i][j].GetText())
-                matrix[i][j] = uint(v)
+                m1[i][j] = uint(v)
             }
         }
-        if !check_field(&matrix) { return }
-        s.Load(matrix)
+        if !check_field(&m1) { return }
+        s.Load(m1)
         s.Solve()
         for i := uint(0); i < 9; i++ {
             for j := uint(0); j < 9; j++ {
                 v := int(s.Get(i, j))
+                m2[i][j] = uint(v)
                 if v != 0 {
                     entries[i][j].SetText(strconv.Itoa(v))
+                }
+            }
+        }
+        // check for differences
+        for i := 0; i < 9; i++ {
+            for j := 0; j < 9; j++ {
+                if m1[i][j] == m2[i][j] {
+                    entries[i][j].ModifyFontEasy("Sans Bold 9")
+                } else {
+                    entries[i][j].ModifyFontEasy("Sans 9")
                 }
             }
         }
