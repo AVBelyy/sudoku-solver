@@ -143,8 +143,8 @@ func Init() {
                 examples_cnt++
             }
         }
+        dir.Close()
     }
-    dir.Close()
     examples.Connect("changed", func() {
         load_sudoku("examples/"+examples.GetActiveText())
     })
