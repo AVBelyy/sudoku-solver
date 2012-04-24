@@ -3,6 +3,9 @@ package ui
 
 /*
 #include <gtk/gtk.h>
+#include <stdlib.h>
+
+static inline void free_string(char* s) { free(s); }
 */
 // #cgo pkg-config: gtk+-2.0
 import "C"
@@ -22,6 +25,8 @@ var (
     s *solver.Solver
     entries [9][9]*gtk.GtkEntry
     examples *gtk.GtkComboBox
+    prev_y, prev_x uint
+    desc_normal, desc_bold *[0]byte
 )
 
 func load_sudoku(path string) bool {
@@ -40,7 +45,7 @@ func load_sudoku(path string) bool {
         for i := 0; i < n; i++ {
             if buf[i] >= 49 && buf[i] <= 57 {
                 entries[x/9][x%9].SetText(strconv.Itoa(int(buf[i]-48)))
-                entries[x/9][x%9].ModifyFontEasy("Sans Bold 9")
+                modify_font(x/9, x%9, desc_bold)
                 x++
             } else if buf[i] == 32 {
                 entries[x/9][x%9].SetText("")
@@ -55,7 +60,7 @@ func clear() {
     for i := 0; i < 9; i++ {
         for j := 0; j < 9; j++ {
             entries[i][j].SetText("")
-            entries[i][j].ModifyFontEasy("Sans Bold 9")
+            modify_font(i, j, desc_bold)
         }
     }
     entries[0][0].GrabFocus()
@@ -104,6 +109,10 @@ func modify_base(v unsafe.Pointer, color *gdk.GdkColor) {
     C.gtk_widget_modify_base((*_Ctype_GtkWidget)(v), C.GtkStateType(gtk.GTK_STATE_NORMAL), (*C.GdkColor)(unsafe.Pointer(&color.Color)))
 }
 
+func modify_font(y int, x int, desc *[0]byte) {
+    C.gtk_widget_modify_font((*_Ctype_GtkWidget)(unsafe.Pointer(entries[y][x].Widget)), desc)
+}
+
 func Init() {
     var (
         files *gtk.GtkHBox
@@ -112,6 +121,13 @@ func Init() {
     )
 
     s = new(solver.Solver)
+
+    cs_desc_normal := C.CString("Sans 9")
+    desc_normal = C.pango_font_description_from_string(cs_desc_normal)
+    C.free_string(cs_desc_normal)
+    cs_desc_bold := C.CString("Sans Bold 9")
+    desc_bold = C.pango_font_description_from_string(cs_desc_bold)
+    C.free_string(cs_desc_bold)
 
     gtk.Init(&os.Args)
 
@@ -125,6 +141,7 @@ func Init() {
     vbox := gtk.VBox(false, 10)
 
     table := gtk.Table(3, 3, false)
+    bg := [2]*gdk.GdkColor{gdk.Color("white"), gdk.Color("#e9f2ea")}
     for y := uint(0); y < 3; y++ {
         for x := uint(0); x < 3; x++ {
             subtable := gtk.Table(3, 3, false)
@@ -133,7 +150,6 @@ func Init() {
                     w := gtk.Entry()
                     w.SetWidthChars(1)
                     w.SetMaxLength(1)
-                    w.ModifyFontEasy("Sans Bold 9")
                     w.Connect("key-press-event", func(ctx *glib.CallbackContext) bool {
                         data := ctx.Data().([]uint)
                         y, x := data[0], data[1]
@@ -175,22 +191,19 @@ func Init() {
                     w.Connect("grab-focus", func(ctx *glib.CallbackContext) {
                         data := ctx.Data().([]uint)
                         y, x := data[0], data[1]
-                        bg_1, bg_2 := gdk.Color("white"), gdk.Color("#e9f2ea")
-                        for i := 0; i < 9; i++ {
-                            for j := 0; j < 9; j++ {
-                                modify_base(unsafe.Pointer(entries[i][j].Widget), bg_1)
+                        for k := 0; k < 2; k++ {
+                            for i := 0; i < 9; i++ {
+                                modify_base(unsafe.Pointer(entries[i][prev_x].Widget), bg[k])
                             }
+                            for j := 0; j < 9; j++ {
+                                modify_base(unsafe.Pointer(entries[prev_y][j].Widget), bg[k])
+                            }
+                            prev_y, prev_x = y, x
                         }
-                        for i := 0; i < 9; i++ {
-                            modify_base(unsafe.Pointer(entries[i][x].Widget), bg_2)
-                        }
-                        for j := 0; j < 9; j++ {
-                            modify_base(unsafe.Pointer(entries[y][j].Widget), bg_2)
-                        }
-                        y, x = x, y
                     }, []uint{3*y+sy, 3*x+sx})
                     subtable.Attach(w, sx, sx+1, sy, sy+1, gtk.GTK_FILL, gtk.GTK_FILL, 0, 0)
                     entries[3*y+sy][3*x+sx] = w
+                    modify_font(int(3*y+sy), int(3*x+sx), desc_bold)
                 }
             }
         table.Attach(subtable, x, x+1, y, y+1, gtk.GTK_FILL, gtk.GTK_FILL, 3, 3)
@@ -223,9 +236,9 @@ func Init() {
         for i := 0; i < 9; i++ {
             for j := 0; j < 9; j++ {
                 if m1[i][j] == m2[i][j] {
-                    entries[i][j].ModifyFontEasy("Sans Bold 9")
+                    modify_font(i, j, desc_bold)
                 } else {
-                    entries[i][j].ModifyFontEasy("Sans 9")
+                    modify_font(i, j, desc_normal)
                 }
             }
         }
