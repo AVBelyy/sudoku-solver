@@ -145,6 +145,20 @@ func (s *Solver) Solve() {
                     goto final
                     hidden_singles_box_next:
                 }
+                // check for naked pairs in row
+                for k := uint(0); k < 9; k++ {
+                    if v == s.matrix[i][k].value && !s.matrix[i][k].final && k != j && count(v) == 2 {
+                        for x := uint(0); x < 9; x++ {
+                            if v&(1<<x) == 0 { continue }
+                            for k_ := uint(0); k_ < 9; k_++ {
+                                if k_ != k && k_ != j && !s.matrix[i][k_].final {
+                                    s.matrix[i][k_].value &= ^(1<<x)
+                                    delta = true
+                                }
+                            }
+                        }
+                    }
+                }
                 // check for naked pairs in column
                 for k := uint(0); k < 9; k++ {
                     if v == s.matrix[k][j].value && !s.matrix[k][j].final && k != i && count(v) == 2 {
