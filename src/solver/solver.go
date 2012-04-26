@@ -73,8 +73,8 @@ func (s *Solver) GetCandidates(y, x uint) ([9]uint, uint) {
 func (s *Solver) Solve() {
     for {
         delta := false
-        for i := 0; i < 9; i++ {
-            for j := 0; j < 9; j++ {
+        for i := uint(0); i < 9; i++ {
+            for j := uint(0); j < 9; j++ {
                 b_y, b_x := i/3*3, j/3*3
                 v, f := s.matrix[i][j].value, s.matrix[i][j].final
                 if f {
@@ -104,7 +104,7 @@ func (s *Solver) Solve() {
                 // check for hidden singles in row
                 for x := uint(0); x < 9; x++ {
                     if v&(1<<x) == 0 { continue }
-                    for k := 0; k < 9; k++ {
+                    for k := uint(0); k < 9; k++ {
                         if !s.matrix[i][k].final && k != j {
                             if s.matrix[i][k].value&(1<<x) != 0 {
                                 goto hidden_singles_row_next
@@ -118,7 +118,7 @@ func (s *Solver) Solve() {
                 // check for hidden singles in column
                 for x := uint(0); x < 9; x++ {
                     if v&(1<<x) == 0 { continue }
-                    for k := 0; k < 9; k++ {
+                    for k := uint(0); k < 9; k++ {
                         if !s.matrix[k][j].final && k != i {
                             if s.matrix[k][j].value&(1<<x) != 0 {
                                 goto hidden_singles_column_next
@@ -144,6 +144,38 @@ func (s *Solver) Solve() {
                     v, f, delta = x+1, true, true
                     goto final
                     hidden_singles_box_next:
+                }
+                // check for naked pairs in column
+                for k := uint(0); k < 9; k++ {
+                    if v == s.matrix[k][j].value && !s.matrix[k][j].final && k != i && count(v) == 2 {
+                        for x := uint(0); x < 9; x++ {
+                            if v&(1<<x) == 0 { continue }
+                            for k_ := uint(0); k_ < 9; k_++ {
+                                if k_ != k && k_ != i && !s.matrix[k_][j].final {
+                                    s.matrix[k_][j].value &= ^(1<<x)
+                                    delta = true
+                                }
+                            }
+                        }
+                    }
+                }
+                // check for naked pairs in box
+                for k1 := b_y; k1 < b_y+3; k1++ {
+                    for k2 := b_x; k2 < b_x+3; k2++ {
+                        if v == s.matrix[k1][k2].value && !s.matrix[k1][k2].final && (k1 != i || k2 != j) && count(v) == 2 {
+                            for x := uint(0); x < 9; x++ {
+                                if v&(1<<x) == 0 { continue }
+                                for k1_ := b_y; k1_ < b_y+3; k1_++ {
+                                    for k2_ := b_x; k2_ < b_x+3; k2_++ {
+                                        if (k1_ != k1 || k2_ != k2) && (k1_ != i || k2_ != j) && !s.matrix[k1_][k2_].final {
+                                            s.matrix[k1_][k2_].value &= ^(1<<x)
+                                            delta = true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 if v != v_s {
                     delta = true
