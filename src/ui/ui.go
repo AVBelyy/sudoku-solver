@@ -15,6 +15,7 @@ import (
     "solver"
     "unicode"
     "strconv"
+    "strings"
     "github.com/mattn/go-gtk/gtk"
     "github.com/mattn/go-gtk/gdk"
     "github.com/mattn/go-gtk/glib"
@@ -60,12 +61,12 @@ func clear() {
     for i := 0; i < 9; i++ {
         for j := 0; j < 9; j++ {
             entries[i][j].SetText("")
+            entries[i][j].SetTooltipText("")
             modify_font(i, j, desc_bold)
         }
     }
     entries[0][0].GrabFocus()
 }
-
 
 func check_field_error(f bool, y1 int, x1 int, y2 int, x2 int) bool {
     if f { entries[y1][x1].GrabFocus() }
@@ -122,10 +123,10 @@ func Init() {
 
     s = new(solver.Solver)
 
-    cs_desc_normal := C.CString("Sans 9")
+    cs_desc_normal := C.CString("Sans 14")
     desc_normal = C.pango_font_description_from_string(cs_desc_normal)
     C.free_string(cs_desc_normal)
-    cs_desc_bold := C.CString("Sans Bold 9")
+    cs_desc_bold := C.CString("Sans Bold 14")
     desc_bold = C.pango_font_description_from_string(cs_desc_bold)
     C.free_string(cs_desc_bold)
 
@@ -150,6 +151,7 @@ func Init() {
                     w := gtk.Entry()
                     w.SetWidthChars(1)
                     w.SetMaxLength(1)
+                    w.SetSizeRequest(23, 25)
                     w.Connect("key-press-event", func(ctx *glib.CallbackContext) bool {
                         data := ctx.Data().([]uint)
                         y, x := data[0], data[1]
@@ -229,6 +231,15 @@ func Init() {
                 m2[i][j] = uint(v)
                 if v != 0 {
                     entries[i][j].SetText(strconv.Itoa(v))
+                } else {
+                    var c_string [9]string
+                    // get list of candidates
+                    c_uint, l := s.GetCandidates(i, j)
+                    for k := uint(0); k < l; k++ {
+                        c_string[k] = strconv.Itoa(int(c_uint[k]))
+                    }
+                    // make a tooltip with them
+                    entries[i][j].SetTooltipText(strings.Join(c_string[:l-1], " "))
                 }
             }
         }

@@ -51,6 +51,25 @@ func (s *Solver) Get(y, x uint) uint {
     return 0
 }
 
+func (s *Solver) GetCandidates(y, x uint) ([9]uint, uint) {
+    var (
+        i, cnt uint
+        res [9]uint
+    )
+    if s.matrix[y][x].final {
+        res[0] = s.matrix[y][x].value
+    } else {
+        for bm := s.matrix[y][x].value; bm != 0; i++ {
+            if bm & 1 != 0 {
+                res[cnt] = i+1
+                cnt += 1
+            }
+            bm >>= 1
+        }
+    }
+    return res, cnt+1
+}
+
 func (s *Solver) Solve() {
     for {
         delta := false
