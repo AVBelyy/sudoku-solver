@@ -21,6 +21,13 @@ import (
     "github.com/mattn/go-gtk/glib"
 )
 
+type (
+    cancel_stack_item struct {
+        matrix [9][9]uint8
+        next *cancel_stack_item
+    }
+)
+
 var (
     Term chan bool
     s *solver.Solver
@@ -28,7 +35,33 @@ var (
     examples *gtk.GtkComboBox
     prev_y, prev_x uint
     desc_normal, desc_bold *[0]byte
+    cancel_stack *cancel_stack_item
 )
+
+func cs_push(m [9][9]uint) {
+    cs := new(cancel_stack_item)
+    for i := 0; i < 9; i++ {
+        for j := 0; j < 9; j++ {
+            cs.matrix[i][j] = uint8(m[i][j])
+        }
+    }
+    cs.next = cancel_stack
+    cancel_stack = cs
+}
+
+func cs_pop() [9][9]uint {
+    if cancel_stack == nil {
+        return [9][9]uint{}
+    }
+    m := [9][9]uint{}
+    for i := 0; i < 9; i++ {
+        for j := 0; j < 9; j++ {
+            m[i][j] = uint(cancel_stack.matrix[i][j])
+        }
+    }
+    cancel_stack = cancel_stack.next
+    return m
+}
 
 func load_sudoku(path string) bool {
     buf := make([]byte, 1024)
@@ -138,6 +171,25 @@ func Init() {
     window.Connect("destroy", func() {
         gtk.MainQuit()
     })
+    window.Connect("key-press-event", func(ctx *glib.CallbackContext) {
+        arg   := ctx.Args(0)
+        kev   := *(**gdk.EventKey)(unsafe.Pointer(&arg))
+        r, st := rune(kev.Keyval), gdk.GdkModifierType(kev.State)
+        if st & gdk.GDK_CONTROL_MASK != 0 {
+            if r == 122 || r == 90 { // Ctrl-Z
+                m := cs_pop()
+                clear()
+                for i := uint(0); i < 9; i++ {
+                    for j := uint(0); j < 9; j++ {
+                        v := int(m[i][j])
+                        if v != 0 {
+                            entries[i][j].SetText(strconv.Itoa(v))
+                        }
+                    }
+                }
+            }
+        }
+    })
 
     vbox := gtk.VBox(false, 10)
 
@@ -223,6 +275,7 @@ func Init() {
             }
         }
         if !check_field(&m1) { return }
+        cs_push(m1)
         s.Load(m1)
         s.Solve()
         for i := uint(0); i < 9; i++ {
@@ -256,6 +309,13 @@ func Init() {
     })
     clear_btn := gtk.ButtonWithLabel("Clear")
     clear_btn.Clicked(func() {
+        m := [9][9]uint{}
+        for i := uint(0); i < 9; i++ {
+            for j := uint(0); j < 9; j++ {
+                m[i][j] = s.Get(i, j)
+            }
+        }
+        cs_push(m)
         clear()
         examples.SetActive(-1)
     })
