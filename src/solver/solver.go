@@ -67,7 +67,7 @@ func (s *Solver) GetCandidates(y, x uint) ([9]uint, uint) {
             bm >>= 1
         }
     }
-    return res, cnt+1
+    return res, cnt
 }
 
 func (s *Solver) Solve() {
@@ -169,7 +169,6 @@ func (s *Solver) Solve() {
                         if pair[k1] == pair[k2] {
                             v = (1<<k1)|(1<<k2)
                             s.matrix[i][pair[k1]].value = v
-                            delta = true
                             break
                         }
                     }
@@ -196,7 +195,6 @@ func (s *Solver) Solve() {
                         if pair[k1] == pair[k2] {
                             v = (1<<k1)|(1<<k2)
                             s.matrix[pair[k1]][j].value = v
-                            delta = true
                             break
                         }
                     }
@@ -225,7 +223,6 @@ func (s *Solver) Solve() {
                         if pair[k1] == pair[k2] {
                             v = (1<<k1)|(1<<k2)
                             s.matrix[pair[k1]>>4][pair[k1]&0xF].value = v
-                            delta = true
                             break
                         }
                     }
@@ -238,7 +235,6 @@ func (s *Solver) Solve() {
                             for k_ := uint(0); k_ < 9; k_++ {
                                 if k_ != k && k_ != j && !s.matrix[i][k_].final {
                                     s.matrix[i][k_].value &= ^(1<<x)
-                                    delta = true
                                 }
                             }
                         }
@@ -252,7 +248,6 @@ func (s *Solver) Solve() {
                             for k_ := uint(0); k_ < 9; k_++ {
                                 if k_ != k && k_ != i && !s.matrix[k_][j].final {
                                     s.matrix[k_][j].value &= ^(1<<x)
-                                    delta = true
                                 }
                             }
                         }
@@ -268,7 +263,6 @@ func (s *Solver) Solve() {
                                     for k2_ := b_x; k2_ < b_x+3; k2_++ {
                                         if (k1_ != k1 || k2_ != k2) && (k1_ != i || k2_ != j) && !s.matrix[k1_][k2_].final {
                                             s.matrix[k1_][k2_].value &= ^(1<<x)
-                                            delta = true
                                         }
                                     }
                                 }

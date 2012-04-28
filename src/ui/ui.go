@@ -239,7 +239,7 @@ func Init() {
                         c_string[k] = strconv.Itoa(int(c_uint[k]))
                     }
                     // make a tooltip with them
-                    entries[i][j].SetTooltipText(strings.Join(c_string[:l-1], " "))
+                    entries[i][j].SetTooltipText(strings.Join(c_string[:l], " "))
                 }
             }
         }
