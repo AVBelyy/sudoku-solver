@@ -71,6 +71,8 @@ func (s *Solver) GetCandidates(y, x uint) ([9]uint, uint) {
 }
 
 func (s *Solver) Solve() {
+    var pair [9]uint
+    
     for {
         delta := false
         for i := uint(0); i < 9; i++ {
@@ -144,6 +146,89 @@ func (s *Solver) Solve() {
                     v, f, delta = x+1, true, true
                     goto final
                     hidden_singles_box_next:
+                }
+                // check for hidden pairs in row
+                for x := uint(0); x < 9; x++ {
+                    occurs, where := 0, uint(0)
+                    pair[x] = 10
+                    if v&(1<<x) == 0 { continue }
+                    for k := uint(0); k < 9; k++ {
+                        if !s.matrix[i][k].final && k != j {
+                            if s.matrix[i][k].value&(1<<x) != 0 {
+                                occurs, where = occurs+1, k
+                            }
+                        }
+                    }
+                    if occurs == 1 {
+                        pair[x] = where
+                    }
+                }
+                for k1 := uint(0);  k1 < 9; k1++ {
+                    if pair[k1] == 10 { continue }
+                    for k2 := k1+1; k2 < 9; k2++ {
+                        if pair[k1] == pair[k2] {
+                            v = (1<<k1)|(1<<k2)
+                            s.matrix[i][pair[k1]].value = v
+                            delta = true
+                            break
+                        }
+                    }
+                }
+                // check for hidden pairs in column
+                for x := uint(0); x < 9; x++ {
+                    occurs, where := 0, uint(0)
+                    pair[x] = 10
+                    if v&(1<<x) == 0 { continue }
+                    for k := uint(0); k < 9; k++ {
+                        if !s.matrix[k][j].final && k != i {
+                            if s.matrix[k][j].value&(1<<x) != 0 {
+                                occurs, where = occurs+1, k
+                            }
+                        }
+                    }
+                    if occurs == 1 {
+                        pair[x] = where
+                    }
+                }
+                for k1 := uint(0);  k1 < 9; k1++ {
+                    if pair[k1] == 10 { continue }
+                    for k2 := k1+1; k2 < 9; k2++ {
+                        if pair[k1] == pair[k2] {
+                            v = (1<<k1)|(1<<k2)
+                            s.matrix[pair[k1]][j].value = v
+                            delta = true
+                            break
+                        }
+                    }
+                }
+                // check for hidden pairs in box
+                for x := uint(0); x < 9; x++ {
+                    occurs, where := 0, uint(0)
+                    pair[x] = 10
+                    if v&(1<<x) == 0 { continue }
+                    for k1 := b_y; k1 < b_y+3; k1++ {
+                        for k2 := b_x; k2 < b_x+3; k2++ {
+                            if !s.matrix[k1][k2].final && (k1 != i || k2 != j) {
+                                if s.matrix[k1][k2].value&(1<<x) != 0 {
+                                    occurs, where = occurs+1, k1<<4|k2
+                                }
+                            }
+                        }
+                    }
+                    if occurs == 1 {
+                        pair[x] = where
+                    }
+                }
+                for k1 := uint(0);  k1 < 9; k1++ {
+                    if pair[k1] == 10 { continue }
+                    for k2 := k1+1; k2 < 9; k2++ {
+                        if pair[k1] == pair[k2] {
+                            v = (1<<k1)|(1<<k2)
+                            s.matrix[pair[k1]>>4][pair[k1]&0xF].value = v
+                            delta = true
+                            break
+                        }
+                    }
                 }
                 // check for naked pairs in row
                 for k := uint(0); k < 9; k++ {
