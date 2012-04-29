@@ -7,6 +7,7 @@ type m_item struct {
 
 type Solver struct {
     matrix [9][9]m_item
+    Size uint
 }
 
 func count(bm uint) uint {
@@ -27,14 +28,14 @@ func fastlog2(bm uint) uint {
 
 func (s *Solver) Load(src [9][9]uint) {
     // transform input matrix to convenient format
-    for i := 0; i < 9; i++ {
-        for j := 0; j < 9; j++ {
+    for i := uint(0); i < s.Size; i++ {
+        for j := uint(0); j < s.Size; j++ {
             v, f := src[i][j], true
             switch {
                 case v == 0:
-                    v = (1<<9)-1
+                    v = (1<<s.Size)-1
                     f = false
-                case 1 <= v && v <= 9:
+                case 1 <= v && v <= s.Size:
                     // do nothing
                 default:
                     // TODO: throw an exception: wrong src matrix format
@@ -75,28 +76,28 @@ func (s *Solver) Solve() {
     
     for {
         delta := false
-        for i := uint(0); i < 9; i++ {
-            for j := uint(0); j < 9; j++ {
-                b_y, b_x := i/3*3, j/3*3
+        for i := uint(0); i < s.Size; i++ {
+            for j := uint(0); j < s.Size; j++ {
+                b_y, b_x := i/(s.Size/3)*(s.Size/3), j/3*3
                 v, f := s.matrix[i][j].value, s.matrix[i][j].final
                 if f {
                     continue
                 }
                 v_s := v
                 // check cell's row
-                for k := 0; k < 9; k++ {
+                for k := uint(0); k < s.Size; k++ {
                     if s.matrix[i][k].final {
                         v &= ^(1<<(s.matrix[i][k].value-1))
                     }
                 }
                 // check cell's column
-                for k := 0; k < 9; k++ {
+                for k := uint(0); k < s.Size; k++ {
                     if s.matrix[k][j].final {
                         v &= ^(1<<(s.matrix[k][j].value-1))
                     }
                 }
                 // check cell's box
-                for k1 := b_y; k1 < b_y+3; k1++ {
+                for k1 := b_y; k1 < b_y+s.Size/3; k1++ {
                     for k2 := b_x; k2 < b_x+3; k2++ {
                         if s.matrix[k1][k2].final {
                             v &= ^(1<<(s.matrix[k1][k2].value-1))
@@ -104,9 +105,9 @@ func (s *Solver) Solve() {
                     }
                 }
                 // check for hidden singles in row
-                for x := uint(0); x < 9; x++ {
+                for x := uint(0); x < s.Size; x++ {
                     if v&(1<<x) == 0 { continue }
-                    for k := uint(0); k < 9; k++ {
+                    for k := uint(0); k < s.Size; k++ {
                         if !s.matrix[i][k].final && k != j {
                             if s.matrix[i][k].value&(1<<x) != 0 {
                                 goto hidden_singles_row_next
@@ -118,9 +119,9 @@ func (s *Solver) Solve() {
                     hidden_singles_row_next:
                 }
                 // check for hidden singles in column
-                for x := uint(0); x < 9; x++ {
+                for x := uint(0); x < s.Size; x++ {
                     if v&(1<<x) == 0 { continue }
-                    for k := uint(0); k < 9; k++ {
+                    for k := uint(0); k < s.Size; k++ {
                         if !s.matrix[k][j].final && k != i {
                             if s.matrix[k][j].value&(1<<x) != 0 {
                                 goto hidden_singles_column_next
@@ -132,9 +133,9 @@ func (s *Solver) Solve() {
                     hidden_singles_column_next:
                 }
                 // check for hidden singles in box
-                for x := uint(0); x < 9; x++ {
+                for x := uint(0); x < s.Size; x++ {
                     if v&(1<<x) == 0 { continue }
-                    for k1 := b_y; k1 < b_y+3; k1++ {
+                    for k1 := b_y; k1 < b_y+s.Size/3; k1++ {
                         for k2 := b_x; k2 < b_x+3; k2++ {
                             if !s.matrix[k1][k2].final && (k1 != i || k2 != j) {
                                 if s.matrix[k1][k2].value&(1<<x) != 0 {
@@ -148,11 +149,11 @@ func (s *Solver) Solve() {
                     hidden_singles_box_next:
                 }
                 // check for hidden pairs in row
-                for x := uint(0); x < 9; x++ {
+                for x := uint(0); x < s.Size; x++ {
                     occurs, where := 0, uint(0)
                     pair[x] = 10
                     if v&(1<<x) == 0 { continue }
-                    for k := uint(0); k < 9; k++ {
+                    for k := uint(0); k < s.Size; k++ {
                         if !s.matrix[i][k].final && k != j {
                             if s.matrix[i][k].value&(1<<x) != 0 {
                                 occurs, where = occurs+1, k
@@ -163,9 +164,9 @@ func (s *Solver) Solve() {
                         pair[x] = where
                     }
                 }
-                for k1 := uint(0);  k1 < 9; k1++ {
+                for k1 := uint(0);  k1 < s.Size; k1++ {
                     if pair[k1] == 10 { continue }
-                    for k2 := k1+1; k2 < 9; k2++ {
+                    for k2 := k1+1; k2 < s.Size; k2++ {
                         if pair[k1] == pair[k2] {
                             v = (1<<k1)|(1<<k2)
                             s.matrix[i][pair[k1]].value = v
@@ -174,11 +175,11 @@ func (s *Solver) Solve() {
                     }
                 }
                 // check for hidden pairs in column
-                for x := uint(0); x < 9; x++ {
+                for x := uint(0); x < s.Size; x++ {
                     occurs, where := 0, uint(0)
                     pair[x] = 10
                     if v&(1<<x) == 0 { continue }
-                    for k := uint(0); k < 9; k++ {
+                    for k := uint(0); k < s.Size; k++ {
                         if !s.matrix[k][j].final && k != i {
                             if s.matrix[k][j].value&(1<<x) != 0 {
                                 occurs, where = occurs+1, k
@@ -189,9 +190,9 @@ func (s *Solver) Solve() {
                         pair[x] = where
                     }
                 }
-                for k1 := uint(0);  k1 < 9; k1++ {
+                for k1 := uint(0);  k1 < s.Size; k1++ {
                     if pair[k1] == 10 { continue }
-                    for k2 := k1+1; k2 < 9; k2++ {
+                    for k2 := k1+1; k2 < s.Size; k2++ {
                         if pair[k1] == pair[k2] {
                             v = (1<<k1)|(1<<k2)
                             s.matrix[pair[k1]][j].value = v
@@ -200,11 +201,11 @@ func (s *Solver) Solve() {
                     }
                 }
                 // check for hidden pairs in box
-                for x := uint(0); x < 9; x++ {
+                for x := uint(0); x < s.Size; x++ {
                     occurs, where := 0, uint(0)
                     pair[x] = 10
                     if v&(1<<x) == 0 { continue }
-                    for k1 := b_y; k1 < b_y+3; k1++ {
+                    for k1 := b_y; k1 < b_y+s.Size/3; k1++ {
                         for k2 := b_x; k2 < b_x+3; k2++ {
                             if !s.matrix[k1][k2].final && (k1 != i || k2 != j) {
                                 if s.matrix[k1][k2].value&(1<<x) != 0 {
@@ -217,9 +218,9 @@ func (s *Solver) Solve() {
                         pair[x] = where
                     }
                 }
-                for k1 := uint(0);  k1 < 9; k1++ {
+                for k1 := uint(0);  k1 < s.Size; k1++ {
                     if pair[k1] == 10 { continue }
-                    for k2 := k1+1; k2 < 9; k2++ {
+                    for k2 := k1+1; k2 < s.Size; k2++ {
                         if pair[k1] == pair[k2] {
                             v = (1<<k1)|(1<<k2)
                             s.matrix[pair[k1]>>4][pair[k1]&0xF].value = v
@@ -228,11 +229,11 @@ func (s *Solver) Solve() {
                     }
                 }
                 // check for naked pairs in row
-                for k := uint(0); k < 9; k++ {
+                for k := uint(0); k < s.Size; k++ {
                     if v == s.matrix[i][k].value && !s.matrix[i][k].final && k != j && count(v) == 2 {
-                        for x := uint(0); x < 9; x++ {
+                        for x := uint(0); x < s.Size; x++ {
                             if v&(1<<x) == 0 { continue }
-                            for k_ := uint(0); k_ < 9; k_++ {
+                            for k_ := uint(0); k_ < s.Size; k_++ {
                                 if k_ != k && k_ != j && !s.matrix[i][k_].final {
                                     s.matrix[i][k_].value &= ^(1<<x)
                                 }
@@ -241,11 +242,11 @@ func (s *Solver) Solve() {
                     }
                 }
                 // check for naked pairs in column
-                for k := uint(0); k < 9; k++ {
+                for k := uint(0); k < s.Size; k++ {
                     if v == s.matrix[k][j].value && !s.matrix[k][j].final && k != i && count(v) == 2 {
-                        for x := uint(0); x < 9; x++ {
+                        for x := uint(0); x < s.Size; x++ {
                             if v&(1<<x) == 0 { continue }
-                            for k_ := uint(0); k_ < 9; k_++ {
+                            for k_ := uint(0); k_ < s.Size; k_++ {
                                 if k_ != k && k_ != i && !s.matrix[k_][j].final {
                                     s.matrix[k_][j].value &= ^(1<<x)
                                 }
@@ -254,12 +255,12 @@ func (s *Solver) Solve() {
                     }
                 }
                 // check for naked pairs in box
-                for k1 := b_y; k1 < b_y+3; k1++ {
+                for k1 := b_y; k1 < b_y+s.Size/3; k1++ {
                     for k2 := b_x; k2 < b_x+3; k2++ {
                         if v == s.matrix[k1][k2].value && !s.matrix[k1][k2].final && (k1 != i || k2 != j) && count(v) == 2 {
-                            for x := uint(0); x < 9; x++ {
+                            for x := uint(0); x < s.Size; x++ {
                                 if v&(1<<x) == 0 { continue }
-                                for k1_ := b_y; k1_ < b_y+3; k1_++ {
+                                for k1_ := b_y; k1_ < b_y+s.Size/3; k1_++ {
                                     for k2_ := b_x; k2_ < b_x+3; k2_++ {
                                         if (k1_ != k1 || k2_ != k2) && (k1_ != i || k2_ != j) && !s.matrix[k1_][k2_].final {
                                             s.matrix[k1_][k2_].value &= ^(1<<x)

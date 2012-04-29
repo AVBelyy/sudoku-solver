@@ -36,12 +36,13 @@ var (
     prev_y, prev_x uint
     desc_normal, desc_bold *[0]byte
     cancel_stack *cancel_stack_item
+    f_size int
 )
 
 func cs_push(m [9][9]uint) {
     cs := new(cancel_stack_item)
-    for i := 0; i < 9; i++ {
-        for j := 0; j < 9; j++ {
+    for i := uint(0); i < s.Size; i++ {
+        for j := uint(0); j < s.Size; j++ {
             cs.matrix[i][j] = uint8(m[i][j])
         }
     }
@@ -54,8 +55,8 @@ func cs_pop() [9][9]uint {
         return [9][9]uint{}
     }
     m := [9][9]uint{}
-    for i := 0; i < 9; i++ {
-        for j := 0; j < 9; j++ {
+    for i := uint(0); i < s.Size; i++ {
+        for j := uint(0); j < s.Size; j++ {
             m[i][j] = uint(cancel_stack.matrix[i][j])
         }
     }
@@ -72,17 +73,17 @@ func load_sudoku(path string) bool {
     defer f.Close()
 
     clear()
-    x := 0
+    x := uint(0)
     for {
         n, _ := f.Read(buf)
-        if n == 0 || x == 81 { break }
         for i := 0; i < n; i++ {
-            if buf[i] >= 49 && buf[i] <= 57 {
-                entries[x/9][x%9].SetText(strconv.Itoa(int(buf[i]-48)))
-                modify_font(x/9, x%9, desc_bold)
+            if x >= s.Size*s.Size { return true }
+            if buf[i] >= 49 && buf[i] <= byte(48+s.Size) {
+                entries[x/s.Size][x%s.Size].SetText(strconv.Itoa(int(buf[i]-48)))
+                modify_font(x/s.Size, x%s.Size, desc_bold)
                 x++
             } else if buf[i] == 32 {
-                entries[x/9][x%9].SetText("")
+                entries[x/s.Size][x%s.Size].SetText("")
                 x++
             }
         }
@@ -91,8 +92,8 @@ func load_sudoku(path string) bool {
 }
 
 func clear() {
-    for i := 0; i < 9; i++ {
-        for j := 0; j < 9; j++ {
+    for i := uint(0); i < s.Size; i++ {
+        for j := uint(0); j < s.Size; j++ {
             entries[i][j].SetText("")
             entries[i][j].SetTooltipText("")
             modify_font(i, j, desc_bold)
@@ -101,32 +102,33 @@ func clear() {
     entries[0][0].GrabFocus()
 }
 
-func check_field_error(f bool, y1 int, x1 int, y2 int, x2 int) bool {
+func check_field_error(f bool, y1 uint, x1 uint, y2 uint, x2 uint) bool {
     if f { entries[y1][x1].GrabFocus() }
     modify_base(unsafe.Pointer(entries[y2][x2].Widget), gdk.Color("red"))
     return false
 }
 
 func check_field(m *[9][9]uint) bool {
-    for i := 0; i < 9; i++ {
-        for j := 0; j < 9; j++ {
+    for i := uint(0); i < s.Size; i++ {
+        for j := uint(0); j < s.Size; j++ {
             if m[i][j] == 0 { continue }
             flag := true
+            b_y, b_x := i/(s.Size/3)*(s.Size/3), j/3*3
             // check row
-            for k2 := 0; k2 < 9; k2++ {
+            for k2 := uint(0); k2 < s.Size; k2++ {
                 if k2 != j && m[i][k2] == m[i][j] {
                     flag = check_field_error(flag, i, j, i, k2)
                 }
             }
             // check column
-            for k1 := 0; k1 < 9; k1++ {
+            for k1 := uint(0); k1 < s.Size; k1++ {
                 if k1 != i && m[k1][j] == m[i][j] {
                     flag = check_field_error(flag, i, j, k1, j)
                 }
             }
             // check box
-            for k1 := i/3*3; k1 < i/3*3+3; k1++ {
-                for k2 := j/3*3; k2 < j/3*3+3; k2++ {
+            for k1 := b_y; k1 < b_y+s.Size/3; k1++ {
+                for k2 := b_x; k2 < b_x+3; k2++ {
                     if (k1 != i || k2 != j) && m[k1][k2] == m[i][j] {
                         flag = check_field_error(flag, i, j, k1, k2)
                     }
@@ -143,24 +145,32 @@ func modify_base(v unsafe.Pointer, color *gdk.GdkColor) {
     C.gtk_widget_modify_base((*_Ctype_GtkWidget)(v), C.GtkStateType(gtk.GTK_STATE_NORMAL), (*C.GdkColor)(unsafe.Pointer(&color.Color)))
 }
 
-func modify_font(y int, x int, desc *[0]byte) {
+func modify_font(y uint, x uint, desc *[0]byte) {
     C.gtk_widget_modify_font((*_Ctype_GtkWidget)(unsafe.Pointer(entries[y][x].Widget)), desc)
 }
 
-func Init() {
+func Init(size uint) {
     var (
         files *gtk.GtkHBox
         examples_cnt int
         newfile_flag bool
+        cs_desc_normal *_Ctype_char
+        cs_desc_bold *_Ctype_char
     )
 
     s = new(solver.Solver)
+    s.Size = size
 
-    cs_desc_normal := C.CString("Sans 14")
+    if s.Size == 9 {
+        cs_desc_normal = C.CString("Sans 14")
+        cs_desc_bold = C.CString("Sans Bold 14")
+    } else {
+        cs_desc_normal = C.CString("Sans 16")
+        cs_desc_bold = C.CString("Sans Bold 16")
+    }
     desc_normal = C.pango_font_description_from_string(cs_desc_normal)
-    C.free_string(cs_desc_normal)
-    cs_desc_bold := C.CString("Sans Bold 14")
     desc_bold = C.pango_font_description_from_string(cs_desc_bold)
+    C.free_string(cs_desc_normal)
     C.free_string(cs_desc_bold)
 
     gtk.Init(&os.Args)
@@ -179,8 +189,8 @@ func Init() {
             if r == 122 || r == 90 { // Ctrl-Z
                 m := cs_pop()
                 clear()
-                for i := uint(0); i < 9; i++ {
-                    for j := uint(0); j < 9; j++ {
+                for i := uint(0); i < s.Size; i++ {
+                    for j := uint(0); j < s.Size; j++ {
                         v := int(m[i][j])
                         if v != 0 {
                             entries[i][j].SetText(strconv.Itoa(v))
@@ -193,17 +203,21 @@ func Init() {
 
     vbox := gtk.VBox(false, 10)
 
-    table := gtk.Table(3, 3, false)
+    table := gtk.Table(3, s.Size/3, false)
     bg := [2]*gdk.GdkColor{gdk.Color("white"), gdk.Color("#e9f2ea")}
     for y := uint(0); y < 3; y++ {
-        for x := uint(0); x < 3; x++ {
-            subtable := gtk.Table(3, 3, false)
-            for sy := uint(0); sy < 3; sy++ {
+        for x := uint(0); x < s.Size/3; x++ {
+            subtable := gtk.Table(s.Size/3, 3, false)
+            for sy := uint(0); sy < s.Size/3; sy++ {
                 for sx := uint(0); sx < 3; sx++ {
                     w := gtk.Entry()
                     w.SetWidthChars(1)
                     w.SetMaxLength(1)
-                    w.SetSizeRequest(23, 25)
+                    if s.Size == 9 {
+                        w.SetSizeRequest(23, 25)
+                    } else {
+                        w.SetSizeRequest(25, 27)
+                    }
                     w.Connect("key-press-event", func(ctx *glib.CallbackContext) bool {
                         data := ctx.Data().([]uint)
                         y, x := data[0], data[1]
@@ -214,7 +228,7 @@ func Init() {
                             case 81:
                                 if x != 0 || y != 0 {
                                     if x == 0 {
-                                        x = 8
+                                        x = s.Size-1
                                         y--
                                     } else {
                                         x--
@@ -223,8 +237,8 @@ func Init() {
                             case 82:
                                 if y != 0 { y-- }
                             case 83:
-                                if x != 8 || y != 8 {
-                                    if x == 8 {
+                                if x != s.Size-1 || y != s.Size-1 {
+                                    if x == s.Size-1 {
                                         x = 0
                                         y++
                                     } else {
@@ -232,7 +246,7 @@ func Init() {
                                     }
                                 }
                             case 84:
-                                if y != 8 { y++ }
+                                if y != s.Size-1 { y++ }
                         }
                         if y != data[0] || x != data[1] {
                             entries[y][x].GrabFocus()
@@ -241,23 +255,23 @@ func Init() {
                             return true
                         }
                         return false
-                    }, []uint{3*y+sy, 3*x+sx})
+                    }, []uint{(s.Size/3)*y+sy, 3*x+sx})
                     w.Connect("grab-focus", func(ctx *glib.CallbackContext) {
                         data := ctx.Data().([]uint)
                         y, x := data[0], data[1]
                         for k := 0; k < 2; k++ {
-                            for i := 0; i < 9; i++ {
+                            for i := uint(0); i < s.Size; i++ {
                                 modify_base(unsafe.Pointer(entries[i][prev_x].Widget), bg[k])
                             }
-                            for j := 0; j < 9; j++ {
+                            for j := uint(0); j < s.Size; j++ {
                                 modify_base(unsafe.Pointer(entries[prev_y][j].Widget), bg[k])
                             }
                             prev_y, prev_x = y, x
                         }
-                    }, []uint{3*y+sy, 3*x+sx})
+                    }, []uint{(s.Size/3)*y+sy, 3*x+sx})
                     subtable.Attach(w, sx, sx+1, sy, sy+1, gtk.GTK_FILL, gtk.GTK_FILL, 0, 0)
-                    entries[3*y+sy][3*x+sx] = w
-                    modify_font(int(3*y+sy), int(3*x+sx), desc_bold)
+                    entries[(s.Size/3)*y+sy][3*x+sx] = w
+                    modify_font((s.Size/3)*y+sy, 3*x+sx, desc_bold)
                 }
             }
         table.Attach(subtable, x, x+1, y, y+1, gtk.GTK_FILL, gtk.GTK_FILL, 3, 3)
@@ -268,8 +282,8 @@ func Init() {
     solve_btn.Clicked(func() {
         var m1, m2 [9][9]uint
 
-        for i := 0; i < 9; i++ {
-            for j := 0; j < 9; j++ {
+        for i := uint(0); i < s.Size; i++ {
+            for j := uint(0); j < s.Size; j++ {
                 v, _ := strconv.Atoi(entries[i][j].GetText())
                 m1[i][j] = uint(v)
             }
@@ -278,8 +292,8 @@ func Init() {
         cs_push(m1)
         s.Load(m1)
         s.Solve()
-        for i := uint(0); i < 9; i++ {
-            for j := uint(0); j < 9; j++ {
+        for i := uint(0); i < s.Size; i++ {
+            for j := uint(0); j < s.Size; j++ {
                 v := int(s.Get(i, j))
                 m2[i][j] = uint(v)
                 if v != 0 {
@@ -297,8 +311,8 @@ func Init() {
             }
         }
         // check for differences
-        for i := 0; i < 9; i++ {
-            for j := 0; j < 9; j++ {
+        for i := uint(0); i < s.Size; i++ {
+            for j := uint(0); j < s.Size; j++ {
                 if m1[i][j] == m2[i][j] {
                     modify_font(i, j, desc_bold)
                 } else {
@@ -310,19 +324,19 @@ func Init() {
     clear_btn := gtk.ButtonWithLabel("Clear")
     clear_btn.Clicked(func() {
         m := [9][9]uint{}
-        for i := uint(0); i < 9; i++ {
-            for j := uint(0); j < 9; j++ {
+        for i := uint(0); i < s.Size; i++ {
+            for j := uint(0); j < s.Size; j++ {
                 m[i][j] = s.Get(i, j)
             }
         }
         cs_push(m)
         clear()
-        examples.SetActive(-1)
     })
 
     examples = gtk.ComboBoxNewText()
     // scan `examples` folder
-    dir, err := os.Open("examples")
+    sz := strconv.Itoa(int(s.Size))
+    dir, err := os.Open("examples/"+sz+"x"+sz)
     if err == nil {
         names, err := dir.Readdirnames(0)
         if err == nil {
@@ -334,29 +348,35 @@ func Init() {
         dir.Close()
     }
     examples.Connect("changed", func() {
-        load_sudoku("examples/"+examples.GetActiveText())
+        sz := strconv.Itoa(int(s.Size))
+        load_sudoku("examples/"+sz+"x"+sz+"/"+examples.GetActiveText())
     })
 
     newfile := gtk.Entry()
     newfile.Connect("activate", func() {
         filename := newfile.GetText()
         if filename != "" {
-            f, err := os.Create("examples/"+filename)
+            sz := strconv.Itoa(int(s.Size))
+            f, err := os.Create("examples/"+sz+"x"+sz+"/"+filename)
             if err == nil {
-                for i := 0; i < 9; i++ {
-                    for j := 0; j < 9; j++ {
+                for i := uint(0); i < s.Size; i++ {
+                    for j := uint(0); j < s.Size; j++ {
                         v := []byte(entries[i][j].GetText())
-                        if len(v) == 0 || v[0] < 49 || v[0] > 57 {
+                        if len(v) == 0 || v[0] < 49 || v[0] > byte(48+s.Size) {
                             v = []byte{' '}
                         }
                         f.Write(v)
-                        if j == 2 || j == 5 {
+                        if (j+1) % 3 == 0 && j+1 != s.Size {
                             f.WriteString("*")
                         }
                     }
                     f.WriteString("\n")
-                    if i == 2 || i == 5 {
-                        f.WriteString("***********\n")
+                    if (i+1) % (s.Size/3) == 0 && i+1 != s.Size {
+                        if s.Size == 9 {
+                            f.WriteString("***********\n")
+                        } else {
+                            f.WriteString("*******\n")
+                        }
                     }
                 }
                 f.Close()
