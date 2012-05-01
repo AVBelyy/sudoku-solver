@@ -82,7 +82,7 @@ func load_sudoku(path string) bool {
                 entries[x/s.Size][x%s.Size].SetText(strconv.Itoa(int(buf[i]-48)))
                 modify_font(x/s.Size, x%s.Size, desc_bold)
                 x++
-            } else if buf[i] == 32 {
+            } else if buf[i] == 32 || buf[i] == 46 { // ' ' or '.'
                 entries[x/s.Size][x%s.Size].SetText("")
                 x++
             }
@@ -292,6 +292,10 @@ func Init(size uint) {
         cs_push(m1)
         s.Load(m1)
         s.Solve()
+        if s.Finals != s.Size*s.Size {
+            // let's try some diabolic algorithms :)
+            s.DiabolicSolve()
+        }
         for i := uint(0); i < s.Size; i++ {
             for j := uint(0); j < s.Size; j++ {
                 v := int(s.Get(i, j))
