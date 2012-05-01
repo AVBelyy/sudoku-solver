@@ -76,6 +76,7 @@ func load_sudoku(path string) bool {
     x := uint(0)
     for {
         n, _ := f.Read(buf)
+        if n == 0 { break }
         for i := 0; i < n; i++ {
             if x >= s.Size*s.Size { return true }
             if buf[i] >= 49 && buf[i] <= byte(48+s.Size) {
