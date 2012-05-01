@@ -333,7 +333,7 @@ func (s *Solver) XYChains_recur(ch chain, p point) {
     // now recursively find the rest of path
 
     defer func() {
-        if ch.length >= 3 && s.XYChains_links(ch.path[0], ch.path[ch.length-1], 1) {
+        if !XYChains_flag && ch.length >= 3 && s.XYChains_links(ch.path[0], ch.path[ch.length-1], 1) {
             p1, p2 := ch.path[0], ch.path[ch.length-1]
             mask := [2][9][9]bool{}
             // calculate number of bit that will be unset
