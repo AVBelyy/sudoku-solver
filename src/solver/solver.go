@@ -410,6 +410,45 @@ func (s *Solver) XYChains_recur(ch chain, p point) {
     }
 }
 
+func (s *Solver) PointingPairs() {
+    for i_ := uint(0); i_ < s.Size; i_ += s.Size/3 {
+        for j_ := uint(0); j_ < s.Size; j_ += 3 {
+            for x := uint(0); x < s.Size; x++ {
+                p, f_y, f_x := point{10, 10}, false, false
+                for i := i_; i < i_+s.Size/3; i++ {
+                    for j := j_; j < j_+3; j++ {
+                        if !s.matrix[i][j].final && s.matrix[i][j].value&(1<<x) != 0 {
+                            if p.x == 10 {
+                                f_y, f_x = true, true
+                            } else {
+                                if i != p.y { f_x = false }
+                                if j != p.x { f_y = false }
+                            }
+                            p = point{i, j}
+                        }
+                    }
+                }
+                if f_y {
+                    for k := uint(0); k < s.Size; k++ {
+                        if !s.matrix[k][p.x].final && (k < i_ || k >= i_+s.Size/3) {
+                            s.matrix[k][p.x].value &= ^(1<<x)
+                            ToughDelta = true
+                        }
+                    }
+                }
+                if f_x {
+                    for k := uint(0); k < s.Size; k++ {
+                        if !s.matrix[p.y][k].final && (k < j_ || k >= j_+3) {
+                            s.matrix[p.y][k].value &= ^(1<<x)
+                            ToughDelta = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 func (s *Solver) XYChains() {
     XYChains_flag = false
     // let's find a start point - an unsolved cell with exactly 2 candidates
@@ -429,6 +468,7 @@ func (s *Solver) ToughSolve() {
     ToughDelta = false
 
     // more complicated and slower algorithms are presented here
+    s.PointingPairs()
     s.XYChains()
     if ToughDelta {
         s.Solve()
