@@ -294,8 +294,8 @@ func Init(size uint) {
         s.Load(m1)
         s.Solve()
         if s.Finals != s.Size*s.Size {
-            // let's try some diabolic algorithms :)
-            s.DiabolicSolve()
+            // let's try some tough algorithms :)
+            s.ToughSolve()
         }
         for i := uint(0); i < s.Size; i++ {
             for j := uint(0); j < s.Size; j++ {

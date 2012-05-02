@@ -22,7 +22,7 @@ type Solver struct {
 }
 
 var (
-    DiabolicDelta bool
+    ToughDelta bool
     XYChains_flag bool
 )
 
@@ -365,7 +365,7 @@ func (s *Solver) XYChains_recur(ch chain, p point) {
                 for j := uint(0); j < s.Size; j++ {
                     if mask[0][i][j] && mask[1][i][j] && !s.matrix[i][j].final {
                         s.matrix[i][j].value &= ^(1<<x)
-                        DiabolicDelta = true
+                        ToughDelta = true
                     }
                 }
             }
@@ -413,7 +413,7 @@ func (s *Solver) XYChains_recur(ch chain, p point) {
 func (s *Solver) XYChains() {
     XYChains_flag = false
     // let's find a start point - an unsolved cell with exactly 2 candidates
-   
+
     for i := uint(0); i < s.Size; i++ {
         for j := uint(0); j < s.Size; j++ {
             if !s.matrix[i][j].final && count(s.matrix[i][j].value) == 2 {
@@ -425,12 +425,12 @@ func (s *Solver) XYChains() {
     }
 }
 
-func (s *Solver) DiabolicSolve() {
-    DiabolicDelta = false
-    
+func (s *Solver) ToughSolve() {
+    ToughDelta = false
+
     // more complicated and slower algorithms are presented here
     s.XYChains()
-    if DiabolicDelta {
+    if ToughDelta {
         s.Solve()
     }
 }
