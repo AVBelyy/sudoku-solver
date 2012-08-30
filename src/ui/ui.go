@@ -32,7 +32,7 @@ var (
     Term chan bool
     s *solver.Solver
     entries [9][9]*gtk.GtkEntry
-    examples *gtk.GtkComboBox
+    examples *gtk.GtkComboBoxText
     prev_y, prev_x uint
     desc_normal, desc_bold *[0]byte
     cancel_stack *cancel_stack_item
@@ -338,7 +338,7 @@ func Init(size uint) {
         clear()
     })
 
-    examples = gtk.ComboBoxNewText()
+    examples = gtk.ComboBoxText()
     // scan `examples` folder
     sz := strconv.Itoa(int(s.Size))
     dir, err := os.Open("examples/"+sz+"x"+sz)
